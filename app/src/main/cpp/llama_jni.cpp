@@ -3,6 +3,7 @@
 #include <android/log.h>
 #include "llama.h"
 #include "mtmd.h"
+#include "mtmd-helper.h"
 
 #define TAG "llama-jni"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
@@ -149,16 +150,89 @@ Java_com_example_gemma4viewer_engine_LlamaEngine_nativeLoadMmproj(
     return 0;
 }
 
+// ---------------------------------------------------------------------------
+// nativeProcessImageTurn — RGB画像+プロンプトをKVキャッシュに書き込む
+// promptにはmtmd_default_marker()を含む完全なテキストを渡すこと
+// M-RoPE処理はmtmd_helper_eval_chunksが自動処理する
+// 戻り値: 0=成功, 1=失敗
+// ---------------------------------------------------------------------------
 JNIEXPORT jint JNICALL
 Java_com_example_gemma4viewer_engine_LlamaEngine_nativeProcessImageTurn(
         JNIEnv* env, jobject /* thiz */,
         jbyteArray rgbBytes, jint width, jint height, jstring prompt) {
-    (void)env;
-    (void)rgbBytes;
-    (void)width;
-    (void)height;
-    (void)prompt;
-    return 0;  // stub — Task 6.3で実装
+    if (!g_mtmd_ctx || !g_ctx || !g_model) {
+        LOGE("nativeProcessImageTurn: uninitialized state");
+        return 1;
+    }
+
+    // 会話履歴を保持しないため毎回KVキャッシュをクリアする
+    llama_memory_clear(llama_get_memory(g_ctx), false);
+
+    // JNIバイト配列をCポインタに変換
+    jbyte* rgb_data = env->GetByteArrayElements(rgbBytes, nullptr);
+    if (!rgb_data) {
+        LOGE("nativeProcessImageTurn: GetByteArrayElements failed");
+        return 1;
+    }
+
+    mtmd_bitmap* bitmap = mtmd_bitmap_init(
+        (uint32_t)width, (uint32_t)height,
+        reinterpret_cast<const unsigned char*>(rgb_data)
+    );
+    env->ReleaseByteArrayElements(rgbBytes, rgb_data, JNI_ABORT);
+
+    if (!bitmap) {
+        LOGE("nativeProcessImageTurn: mtmd_bitmap_init failed");
+        return 1;
+    }
+
+    const char* prompt_str = env->GetStringUTFChars(prompt, nullptr);
+    if (!prompt_str) {
+        mtmd_bitmap_free(bitmap);
+        LOGE("nativeProcessImageTurn: GetStringUTFChars failed");
+        return 1;
+    }
+
+    mtmd_input_chunks* chunks = mtmd_input_chunks_init();
+    if (!chunks) {
+        env->ReleaseStringUTFChars(prompt, prompt_str);
+        mtmd_bitmap_free(bitmap);
+        LOGE("nativeProcessImageTurn: mtmd_input_chunks_init failed");
+        return 1;
+    }
+
+    mtmd_input_text input_text = {
+        prompt_str,
+        /*add_special=*/true,
+        /*parse_special=*/true
+    };
+    const mtmd_bitmap* bitmaps[] = { bitmap };
+    int32_t ret = mtmd_tokenize(g_mtmd_ctx, chunks, &input_text, bitmaps, 1);
+    env->ReleaseStringUTFChars(prompt, prompt_str);
+    mtmd_bitmap_free(bitmap);
+
+    if (ret != 0) {
+        mtmd_input_chunks_free(chunks);
+        LOGE("nativeProcessImageTurn: mtmd_tokenize failed (ret=%d)", ret);
+        return 1;
+    }
+
+    // mtmd_helper_eval_chunksがM-RoPEを含む全チャンク処理を自動で行う
+    llama_pos new_n_past = 0;
+    ret = mtmd_helper_eval_chunks(
+        g_mtmd_ctx, g_ctx, chunks,
+        /*n_past=*/0, /*seq_id=*/0, /*n_batch=*/512, /*logits_last=*/true,
+        &new_n_past
+    );
+    mtmd_input_chunks_free(chunks);
+
+    if (ret != 0) {
+        LOGE("nativeProcessImageTurn: mtmd_helper_eval_chunks failed (ret=%d)", ret);
+        return 1;
+    }
+
+    LOGI("nativeProcessImageTurn: done, new_n_past=%d", (int)new_n_past);
+    return 0;
 }
 
 JNIEXPORT jstring JNICALL

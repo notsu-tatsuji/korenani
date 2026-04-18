@@ -141,7 +141,7 @@
   - _Boundary: Native_
   - _Depends: 5_
 
-- [ ] 6.3 llama_jni.cpp 画像入力ターン処理の実装（M-RoPE含む）
+- [x] 6.3 llama_jni.cpp 画像入力ターン処理の実装（M-RoPE含む）
   - `nativeProcessImageTurn` の実装: `mtmd_bitmap_init → mtmd_tokenize → mtmd_encode_chunk（画像チャンク）→ llama_decode（テキストチャンク）`
   - `mtmd_decode_use_mrope()` が `true` の場合、`mtmd_image_tokens_get_decoder_pos()` でM-RoPE 3Dポジションを設定
   - 使用後: `mtmd_bitmap_free`、`mtmd_input_chunks_free` でクリーンアップ
