@@ -207,7 +207,7 @@
 
 ## Task 9: 統合フェーズ — 全フロー接続
 
-- [ ] 9.1 MainViewModelへのRepository接続とダウンロード→モデルロードフロー統合
+- [x] 9.1 MainViewModelへのRepository接続とダウンロード→モデルロードフロー統合
   - `MainViewModel` に `ModelRepository` と `InferenceRepository` をコンストラクタ注入（ViewModelFactory使用）
   - `onAppStart()`: `isModelReady()` チェック → `false` なら `AppState.DownloadRequired`、`true` なら `AppState.ModelLoading` → `initialize()` → `AppState.ModelReady`
   - `onStartDownload()`: `downloadModels()` Flow を collect → `AppState.Downloading` 更新 → `Finished` 後に `AppState.ModelLoading` → `initialize()` → `AppState.ModelReady`
