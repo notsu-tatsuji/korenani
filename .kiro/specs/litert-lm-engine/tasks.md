@@ -36,8 +36,8 @@
   - _Requirements: 2.3, 3.2, 3.3, 3.4_
   - _Boundary: LiteRtLmEngine_
 
-- [ ] 3. (P) Core: ModelRepositoryImpl を単一ファイルダウンロードに対応させる
-- [ ] 3.1 (P) isModelReady() を .litertlm 単一ファイル確認に変更し getMmprojPath() を空文字返却にする
+- [x] 3. (P) Core: ModelRepositoryImpl を単一ファイルダウンロードに対応させる
+- [x] 3.1 (P) isModelReady() を .litertlm 単一ファイル確認に変更し getMmprojPath() を空文字返却にする
   - `isModelReady()` が `MODEL_FILENAME`（.litertlm）の存在かつ `length() > 0` を確認するよう変更する
   - `getMmprojPath()` が `""` を返すよう変更する（LiteRT-LM は単一ファイルで完結）
   - `downloadModels()` が `.litertlm` 1 件のみをダウンロードし mmproj のダウンロード処理を削除する
@@ -46,8 +46,8 @@
   - _Boundary: ModelRepositoryImpl_
   - _Depends: 1.2_
 
-- [ ] 4. Core: InferenceRepositoryImpl を LiteRT-LM API に置き換え
-- [ ] 4.1 LlamaEngine 参照を LiteRtLmEngine に置き換え Bitmap→一時ファイル変換と削除を実装する
+- [x] 4. Core: InferenceRepositoryImpl を LiteRT-LM API に置き換え
+- [x] 4.1 LlamaEngine 参照を LiteRtLmEngine に置き換え Bitmap→一時ファイル変換と削除を実装する
   - `LlamaEngine` のすべての参照を `LiteRtLmEngine` に置き換える
   - コンストラクタを `InferenceRepositoryImpl(engine: LiteRtLmEngine, cacheDir: File)` に変更する（`nativeLibDir` を削除）
   - `infer(bitmap, prompt)` 内で Bitmap を最大 336px にリサイズし JPEG 一時ファイルとして `cacheDir` に保存する
@@ -60,8 +60,8 @@
   - _Boundary: InferenceRepositoryImpl_
   - _Depends: 2.2_
 
-- [ ] 5. Integration: llama.cpp スタックの完全削除
-- [ ] 5.1 LlamaEngine.kt を削除し app/src/main/cpp/ ディレクトリと llama.cpp サブモジュールを除去する
+- [x] 5. Integration: llama.cpp スタックの完全削除
+- [x] 5.1 LlamaEngine.kt を削除し app/src/main/cpp/ ディレクトリと llama.cpp サブモジュールを除去する
   - `engine/LlamaEngine.kt` を削除する（InferenceRepositoryImpl が参照していないことを確認後）
   - `app/src/main/cpp/` ディレクトリをすべて削除する（JNI ソース・llama.cpp サブモジュール）
   - `.gitmodules` から llama.cpp エントリを削除し `git submodule deinit` を実行する
@@ -69,8 +69,8 @@
   - _Requirements: 4.2, 4.3_
   - _Depends: 4.1_
 
-- [ ] 6. Validation: ビルド確認とテスト完備
-- [ ] 6.1 Gradle ビルドが C++ コンパイルステップなしに成功することを確認する
+- [x] 6. Validation: ビルド確認とテスト完備
+- [x] 6.1 Gradle ビルドが C++ コンパイルステップなしに成功することを確認する
   - `./gradlew assembleDebug` を実行し、ビルドログに `cmake`・`ninja` などの C++ ビルドステップが含まれないことを確認する
   - `./gradlew test` が全ユニットテストをパスすること（ModelConfig・ModelRepositoryImpl・LiteRtLmEngine・InferenceRepositoryImpl）
   - 生成された APK に `libllamajni.so` などの JNI ライブラリが含まれないことを確認する
