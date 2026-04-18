@@ -17,21 +17,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        ndk {
-            abiFilters += listOf("arm64-v8a")
-        }
-
-        externalNativeBuild {
-            cmake {
-                arguments(
-                    "-DBUILD_SHARED_LIBS=ON",
-                    "-DLLAMA_BUILD_COMMON=ON",
-                    "-DGGML_OPENMP=OFF",
-                    "-DLLAMA_BUILD_TESTS=OFF",
-                    "-DLLAMA_BUILD_EXAMPLES=OFF"
-                )
-            }
-        }
     }
 
     buildTypes {
@@ -63,14 +48,6 @@ android {
         }
     }
 
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-
-    ndkVersion = "30.0.14904198"
 }
 
 dependencies {
@@ -97,6 +74,9 @@ dependencies {
 
     // OkHttp 4.x
     implementation(libs.okhttp)
+
+    // LiteRT-LM SDK
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.2")
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
