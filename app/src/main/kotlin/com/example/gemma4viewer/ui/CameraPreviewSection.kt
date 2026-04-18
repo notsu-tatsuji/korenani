@@ -89,18 +89,20 @@ fun CameraPreviewSection(
                 }
             }
         }
-    } else if (capturedBitmap != null && appState is AppState.Inferencing) {
-        // 推論中は撮影した静止画を表示
+    } else if (capturedBitmap != null && (appState is AppState.Inferencing || appState is AppState.InferenceResult || appState is AppState.InferenceError)) {
+        // 推論中・結果表示中・エラー中は撮影した静止画を表示
         Box(modifier = modifier.fillMaxSize()) {
             Image(
                 bitmap = capturedBitmap.asImageBitmap(),
                 contentDescription = "解析中の画像",
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center),
-            )
+            if (appState is AppState.Inferencing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
         }
     } else {
         CameraXPreviewContent(
