@@ -62,7 +62,7 @@
   - _Requirements: 1.1, 1.2, 3.1, 3.2_
   - _Boundary: MainScreen_
 
-- [ ] 3.2 ResultSectionテキスト表示エリアの実装
+- [x] 3.2 ResultSectionテキスト表示エリアの実装
   - `verticalScroll(rememberScrollState())` でスクロール可能なテキストエリアを実装
   - `AppState.Inferencing` 時: `CircularProgressIndicator` を表示
   - `AppState.InferenceResult(text)` 時: 日本語テキストを表示（トークン追加ごとに更新）

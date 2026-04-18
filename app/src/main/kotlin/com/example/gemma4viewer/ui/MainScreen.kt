@@ -77,7 +77,10 @@ fun MainScreen(
             LoadingContent(modifier = modifier)
 
         ScreenMode.CAMERA_SPLIT ->
-            SplitContent(modifier = modifier)
+            SplitContent(
+                appState = appState,
+                modifier = modifier,
+            )
     }
 }
 
@@ -168,15 +171,18 @@ private fun LoadingContent(modifier: Modifier = Modifier) {
 // --------------------------------------------------------------------------
 
 @Composable
-private fun SplitContent(modifier: Modifier = Modifier) {
+private fun SplitContent(
+    appState: AppState,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier.fillMaxSize()) {
         // 上半分: CameraPreviewSection プレースホルダー（Task 7.x で実装）
         Box(modifier = Modifier.weight(0.5f)) {
             CameraPreviewSection()
         }
-        // 下半分: ResultSection プレースホルダー（Task 3.2 で実装）
+        // 下半分: ResultSection（AppState に応じてローディング・テキスト・エラーを表示）
         Box(modifier = Modifier.weight(0.5f)) {
-            ResultSection()
+            ResultSection(appState = appState)
         }
     }
 }
