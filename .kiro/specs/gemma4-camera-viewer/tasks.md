@@ -35,7 +35,7 @@
 
 ## Task 2 (P): AppState定義とMainViewModel骨格
 
-- [ ] 2.1 AppState sealed classの実装
+- [x] 2.1 AppState sealed classの実装
   - 全状態を定義: `DownloadRequired`、`Downloading(progress: Int, label: String)`、`DownloadFailed(error: String)`、`ModelLoading`、`ModelReady`、`Inferencing`、`InferenceResult(text: String)`、`InferenceError(message: String)`
   - AppState sealed classがコンパイルに成功し、`when` 式でスマートキャストが機能する
   - _Requirements: 1.1, 1.2, 2.2, 3.1, 3.2, 4.2, 4.3, 4.5_
