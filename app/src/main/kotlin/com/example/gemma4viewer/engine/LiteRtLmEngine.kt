@@ -2,10 +2,13 @@ package com.example.gemma4viewer.engine
 
 import android.util.Log
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
 
 /**
  * LiteRT-LM SDK の Engine ライフサイクルを管理し、GPU 優先・CPU フォールバック初期化と
@@ -35,33 +38,62 @@ class LiteRtLmEngine(
      */
     interface EngineHandle {
         fun close()
+
+        /**
+         * エンジンから会話ハンドルを作成する。
+         * プロダクションコードでは SDK の Conversation をラップし、テストではフェイクを返す。
+         */
+        fun createConversation(): ConversationHandle
+    }
+
+    /**
+     * 会話セッションのライフサイクルを抽象化するインターフェース。
+     * プロダクションコードでは SdkConversationHandle が実装し、テストでは FakeConversationHandle が実装する。
+     */
+    interface ConversationHandle {
+        /**
+         * マルチモーダルコンテンツで非同期推論を実行し、生成トークンを Flow として返す。
+         *
+         * @param imagePath 推論に使用する画像の絶対ファイルパス
+         * @param prompt テキストプロンプト
+         * @return 生成トークンのストリーム。生成完了で正常終了、エラー時は例外で終了する。
+         */
+        fun sendMessageAsync(imagePath: String, prompt: String): Flow<String>
+
+        fun close()
     }
 
     private var engineHandle: EngineHandle? = null
+    private var conversationHandle: ConversationHandle? = null
 
     /**
      * GPU バックエンドでエンジンを初期化する。GPU が利用できない場合は CPU にフォールバックする。
      * 全バックエンドで初期化に失敗した場合は例外をスローする。
+     * 初期化成功後は infer() を受け付けられる状態に遷移する（要件 2.3）。
      *
      * @param modelPath .litertlm モデルファイルの絶対パス
      */
     suspend fun initialize(modelPath: String) {
-        engineHandle = try {
-            val handle = gpuEngineFactory(modelPath)
+        val handle = try {
+            val h = gpuEngineFactory(modelPath)
             Log.i(TAG, "GPU バックエンドで初期化成功")
-            handle
+            h
         } catch (gpuException: Exception) {
             Log.w(TAG, "GPU 初期化失敗。CPU フォールバックを試みます: ${gpuException.message}")
-            val handle = cpuEngineFactory(modelPath)
+            val h = cpuEngineFactory(modelPath)
             Log.i(TAG, "CPU バックエンドで初期化成功（フォールバック）")
-            handle
+            h
         }
+        engineHandle = handle
+        conversationHandle = handle.createConversation()
     }
 
     /**
      * エンジンリソースを解放する。解放後の infer() 呼び出しは IllegalStateException をスローする。
      */
     suspend fun release() {
+        conversationHandle?.close()
+        conversationHandle = null
         engineHandle?.close()
         engineHandle = null
         Log.i(TAG, "エンジンリソースを解放しました")
@@ -69,7 +101,10 @@ class LiteRtLmEngine(
 
     /**
      * 画像とプロンプトを使ったマルチモーダル推論を実行し、生成トークンを Flow でストリーミングする。
-     * Task 2.2 で完全なストリーミング実装に置き換えられる。
+     *
+     * Contents.of(Content.ImageFile(imagePath), Content.Text(prompt)) を構築して
+     * conversation.sendMessageAsync() に渡し、各 Message を文字列トークンとして emit する。
+     * 生成完了時に Flow が正常終了し、エラー時に Flow が例外で終了する（要件 3.3, 3.4）。
      *
      * @param imagePath 推論に使用する画像の絶対ファイルパス
      * @param prompt テキストプロンプト
@@ -77,10 +112,10 @@ class LiteRtLmEngine(
      * @throws IllegalStateException initialize() が呼ばれていないか、release() 後に呼ばれた場合
      */
     fun infer(imagePath: String, prompt: String): Flow<String> {
-        checkNotNull(engineHandle) {
+        val conversation = checkNotNull(conversationHandle) {
             "エンジンが初期化されていません。infer() の前に initialize() を呼び出してください。"
         }
-        return emptyFlow()
+        return conversation.sendMessageAsync(imagePath, prompt)
     }
 
     companion object {
@@ -93,6 +128,33 @@ class LiteRtLmEngine(
         private class SdkEngineHandle(private val engine: Engine) : EngineHandle {
             override fun close() {
                 engine.close()
+            }
+
+            override fun createConversation(): ConversationHandle {
+                return SdkConversationHandle(engine.createConversation())
+            }
+        }
+
+        /**
+         * LiteRT-LM SDK の Conversation インスタンスをラップする ConversationHandle 実装。
+         * プロダクションコードでのみ使用される。
+         *
+         * sendMessageAsync(Contents) は Flow<Message> を返す。
+         * Message.toString() は Contents.toString() を返し、テキストトークンを結合した文字列となる。
+         */
+        private class SdkConversationHandle(private val conversation: Conversation) : ConversationHandle {
+            override fun sendMessageAsync(imagePath: String, prompt: String): Flow<String> {
+                val contents = Contents.of(
+                    Content.ImageFile(imagePath),
+                    Content.Text(prompt)
+                )
+                return conversation.sendMessageAsync(contents).map { message ->
+                    message.toString()
+                }
+            }
+
+            override fun close() {
+                conversation.close()
             }
         }
     }

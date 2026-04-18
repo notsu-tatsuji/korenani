@@ -9,7 +9,7 @@
   - Gradle sync が成功し dependencies に LiteRT-LM SDK が表示されること
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 1.2 ModelConfig 定数クラスを Gemma 4 E2B .litertlm の URL・ファイル名に更新しユニットテストを実装する
+- [x] 1.2 ModelConfig 定数クラスを Gemma 4 E2B .litertlm の URL・ファイル名に更新しユニットテストを実装する
   - `MODEL_URL` を `https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm` に変更する
   - `MODEL_FILENAME` を `gemma-4-E2B-it.litertlm` に変更する
   - `MMPROJ_URL`・`MMPROJ_FILENAME` は空文字定数として維持する（`getMmprojPath()` 互換性）
@@ -17,7 +17,7 @@
   - _Requirements: 1.1, 5.2_
 
 - [ ] 2. Core: LiteRtLmEngine の新規実装
-- [ ] 2.1 LiteRtLmEngine クラスを新規作成し GPU 優先・CPU フォールバック初期化とリソース解放を実装する
+- [x] 2.1 LiteRtLmEngine クラスを新規作成し GPU 優先・CPU フォールバック初期化とリソース解放を実装する
   - `engine/LiteRtLmEngine.kt` を新規作成する
   - `initialize(modelPath: String)` を suspend 関数として実装する。`Backend.GPU()` で初期化を試み、例外発生時に `Backend.CPU()` でリトライする
   - `release()` で Engine・Conversation リソースを解放し、以降の `infer` 呼び出しを不正状態から保護する
@@ -27,7 +27,7 @@
   - _Requirements: 2.1, 2.2, 2.4, 2.5_
   - _Boundary: LiteRtLmEngine_
 
-- [ ] 2.2 infer メソッドでマルチモーダル推論と Flow ストリーミングを実装する
+- [x] 2.2 infer メソッドでマルチモーダル推論と Flow ストリーミングを実装する
   - `infer(imagePath: String, prompt: String): Flow<String>` を実装する
   - `Contents.of(Content.ImageFile(imagePath), Content.Text(prompt))` を構築して `conversation.sendMessageAsync()` に渡す
   - 生成トークンを受信次第 `Flow<String>` として逐次 emit する
