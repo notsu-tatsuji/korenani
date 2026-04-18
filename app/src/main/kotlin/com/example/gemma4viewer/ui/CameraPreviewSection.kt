@@ -1,5 +1,11 @@
 package com.example.gemma4viewer.ui
 
+import androidx.camera.compose.CameraXViewfinder
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.Preview
+import androidx.camera.core.SurfaceRequest
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,10 +18,16 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 /**
  * 権限状態をUIメッセージに変換する純粋関数。JVMユニットテスト可能。
@@ -28,7 +40,7 @@ fun resolveCameraPermissionMessage(hasPermission: Boolean): String? =
  * カメラプレビューと撮影ボタンを表示するComposable。
  *
  * - hasCameraPermission=false: 権限拒否時の説明UIと権限要求ボタンを表示
- * - hasCameraPermission=true: カメラプレビュー（Task 7.2で実装）
+ * - hasCameraPermission=true: CameraXリアルタイムプレビュー（Task 7.2）
  */
 @Composable
 fun CameraPreviewSection(
@@ -60,13 +72,52 @@ fun CameraPreviewSection(
             }
         }
     } else {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(text = "カメラプレビュー（準備中）")
+        CameraXPreviewContent(modifier = modifier)
+    }
+}
+
+@Composable
+internal fun CameraXPreviewContent(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val surfaceRequest = remember { mutableStateOf<SurfaceRequest?>(null) }
+    val imageCapture = remember {
+        ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .build()
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        var cameraProvider: ProcessCameraProvider? = null
+
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider { req ->
+                    surfaceRequest.value = req
+                }
+            }
+            cameraProvider?.unbindAll()
+            cameraProvider?.bindToLifecycle(
+                lifecycleOwner,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageCapture,
+            )
+        }, ContextCompat.getMainExecutor(context))
+
+        onDispose {
+            cameraProvider?.unbindAll()
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        surfaceRequest.value?.let { req ->
+            CameraXViewfinder(
+                surfaceRequest = req,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

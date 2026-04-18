@@ -163,7 +163,7 @@
   - _Boundary: MainActivity, CameraPreviewSection_
   - _Depends: 2_
 
-- [ ] 7.2 CameraXプレビューとImageCapture設定の実装
+- [x] 7.2 CameraXプレビューとImageCapture設定の実装
   - `ProcessCameraProvider.getInstance()` + `bindToLifecycle(owner, CameraSelector.BACK_CAMERA, preview, imageCapture)` を実装
   - `Preview.Builder().build().also { it.setSurfaceProvider { req -> _surfaceRequest.value = req } }` でSurfaceRequest管理
   - `CameraXViewfinder(surfaceRequest)` でCompose nativeプレビュー（AndroidView不使用）
