@@ -194,7 +194,7 @@
   - _Boundary: InferenceRepository_
   - _Depends: 5, 6_
 
-- [ ] 8.2 Flow<String>トークンストリーミング推論とGemma 4プロンプトテンプレートの実装
+- [x] 8.2 Flow<String>トークンストリーミング推論とGemma 4プロンプトテンプレートの実装
   - `infer(bitmap, prompt)`: `bitmap.toRgbByteArray() → nativeProcessImageTurn(rgb, w, h, fullPrompt) → generateNextTokenループ`
   - Gemma 4プロンプトテンプレート組み込み: `"<start_of_turn>user\n{prompt}<end_of_turn>\n<start_of_turn>model\n"`
   - `Flow<String>` でトークンを emit、空文字受信で `complete`
