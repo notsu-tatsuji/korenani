@@ -2,15 +2,17 @@
 #include <string>
 #include <android/log.h>
 #include "llama.h"
+#include "mtmd.h"
 
 #define TAG "llama-jni"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 
-static llama_model*   g_model   = nullptr;
-static llama_context* g_ctx     = nullptr;
-static llama_sampler* g_sampler = nullptr;
-static llama_batch    g_batch   = {};
+static llama_model*   g_model    = nullptr;
+static llama_context* g_ctx      = nullptr;
+static llama_sampler* g_sampler  = nullptr;
+static llama_batch    g_batch    = {};
+static mtmd_context*  g_mtmd_ctx = nullptr;
 
 extern "C" {
 
@@ -90,6 +92,10 @@ JNIEXPORT void JNICALL
 Java_com_example_gemma4viewer_engine_LlamaEngine_nativeUnload(
         JNIEnv* /* env */, jobject /* thiz */) {
     LOGI("nativeUnload: releasing resources");
+    if (g_mtmd_ctx) {
+        mtmd_free(g_mtmd_ctx);
+        g_mtmd_ctx = nullptr;
+    }
     if (g_sampler) {
         llama_sampler_free(g_sampler);
         g_sampler = nullptr;
@@ -110,12 +116,37 @@ Java_com_example_gemma4viewer_engine_LlamaEngine_nativeUnload(
 // 以下はスタブ — Task 5.3 / Task 6 で実装される
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// nativeLoadMmproj — mmprojファイルからmtmdコンテキストを初期化する
+// Gemma 4クラッシュ回避: image_min_tokens = 0 を必ず設定する
+// 戻り値: 0=成功, 1=失敗
+// ---------------------------------------------------------------------------
 JNIEXPORT jint JNICALL
 Java_com_example_gemma4viewer_engine_LlamaEngine_nativeLoadMmproj(
         JNIEnv* env, jobject /* thiz */, jstring mmprojPath) {
-    (void)env;
-    (void)mmprojPath;
-    return 0;  // stub — Task 6.2で実装
+    if (!g_model) {
+        LOGE("nativeLoadMmproj: g_model is null — call nativeLoad first");
+        return 1;
+    }
+    const char* path = env->GetStringUTFChars(mmprojPath, nullptr);
+    if (!path) {
+        LOGE("nativeLoadMmproj: GetStringUTFChars failed");
+        return 1;
+    }
+    LOGI("nativeLoadMmproj: loading mmproj from %s", path);
+
+    mtmd_context_params params = mtmd_context_params_default();
+    params.image_min_tokens = 0;  // Gemma 4: 0以外だとクラッシュする
+
+    g_mtmd_ctx = mtmd_init_from_file(path, g_model, params);
+    env->ReleaseStringUTFChars(mmprojPath, path);
+
+    if (!g_mtmd_ctx) {
+        LOGE("nativeLoadMmproj: mtmd_init_from_file failed");
+        return 1;
+    }
+    LOGI("nativeLoadMmproj: mtmd context initialized successfully");
+    return 0;
 }
 
 JNIEXPORT jint JNICALL

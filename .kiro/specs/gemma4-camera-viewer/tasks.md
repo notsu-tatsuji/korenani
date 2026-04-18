@@ -132,7 +132,7 @@
   - _Boundary: ImageUtils_
   - _Depends: なし（Task 5と並行実施可能）_
 
-- [ ] 6.2 llama_jni.cpp mmprojロードとmtmd初期化の実装
+- [x] 6.2 llama_jni.cpp mmprojロードとmtmd初期化の実装
   - `nativeLoadMmproj`（Kotlin宣言はTask 5.1で完了済み）のC実装
   - `mtmd_context_params` に `image_min_tokens = 0`（Gemma 4クラッシュ回避）を設定
   - `mtmd_init_from_file(mmprojPath, g_model, params)` で `g_mtmd_ctx` を初期化
