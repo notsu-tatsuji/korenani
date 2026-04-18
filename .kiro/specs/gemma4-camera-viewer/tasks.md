@@ -114,7 +114,7 @@
   - _Requirements: 4.1, 5.1_
   - _Boundary: Native_
 
-- [ ] 5.3 llama_jni.cpp トークン生成ループの実装
+- [x] 5.3 llama_jni.cpp トークン生成ループの実装
   - `nativeGenerateNextToken`: `llama_sampler_sample → llama_decode（1トークン）→ token文字列返却`
   - EOS検出時に空文字を返す
   - テキストプロンプトに対して `nativeGenerateNextToken()` が意味のあるトークン列を返し、EOS時に空文字を返す

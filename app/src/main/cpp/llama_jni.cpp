@@ -133,7 +133,41 @@ Java_com_example_gemma4viewer_engine_LlamaEngine_nativeProcessImageTurn(
 JNIEXPORT jstring JNICALL
 Java_com_example_gemma4viewer_engine_LlamaEngine_nativeGenerateNextToken(
         JNIEnv* env, jobject /* thiz */) {
-    return env->NewStringUTF("");  // stub — Task 5.3で実装（EOS相当）
+    if (!g_ctx || !g_model || !g_sampler) {
+        LOGE("nativeGenerateNextToken: uninitialized state (ctx=%p model=%p sampler=%p)",
+             (void*)g_ctx, (void*)g_model, (void*)g_sampler);
+        return env->NewStringUTF("");
+    }
+
+    // サンプリング: バッチの最後のlogits位置から次トークンを選択
+    llama_token token = llama_sampler_sample(g_sampler, g_ctx, -1);
+
+    // EOGトークン（EOS/EOT）検出時は空文字を返す
+    const llama_vocab* vocab = llama_model_get_vocab(g_model);
+    if (llama_vocab_is_eog(vocab, token)) {
+        LOGI("nativeGenerateNextToken: EOG token detected, stopping generation");
+        return env->NewStringUTF("");
+    }
+
+    // サンプラーの内部状態（repetition penaltyなど）を更新
+    llama_sampler_accept(g_sampler, token);
+
+    // 1トークンのバッチを作成してデコード（KVキャッシュに積む）
+    g_batch = llama_batch_get_one(&token, 1);
+    if (llama_decode(g_ctx, g_batch) != 0) {
+        LOGE("nativeGenerateNextToken: llama_decode failed");
+        return env->NewStringUTF("");
+    }
+
+    // トークンIDをテキスト（UTF-8断片）に変換
+    char buf[256] = {};
+    int n = llama_token_to_piece(vocab, token, buf, (int)sizeof(buf) - 1, 0, true);
+    if (n < 0) {
+        LOGE("nativeGenerateNextToken: llama_token_to_piece failed (n=%d)", n);
+        return env->NewStringUTF("");
+    }
+    buf[n] = '\0';
+    return env->NewStringUTF(buf);
 }
 
 } // extern "C"
