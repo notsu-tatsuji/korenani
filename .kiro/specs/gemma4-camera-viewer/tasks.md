@@ -41,7 +41,7 @@
   - _Requirements: 1.1, 1.2, 2.2, 3.1, 3.2, 4.2, 4.3, 4.5_
   - _Boundary: MainViewModel_
 
-- [ ] 2.2 MainViewModelのStateFlow管理骨格実装
+- [x] 2.2 MainViewModelのStateFlow管理骨格実装
   - `_appState: MutableStateFlow<AppState>` と公開用 `appState: StateFlow<AppState>` の定義
   - `onAppStart()`、`onStartDownload()`、`onRetryDownload()`、`onCapture(bitmap: Bitmap)` のスタブメソッドを定義
   - Repository引数は `interface` 型のみ参照（実装未接続のスタブ）
