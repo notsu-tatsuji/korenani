@@ -75,7 +75,7 @@
 
 ## Task 4 (P): ModelRepository — ダウンロードとキャッシュ管理
 
-- [ ] 4.1 モデルファイル存在確認とローカルパス管理の実装
+- [x] 4.1 モデルファイル存在確認とローカルパス管理の実装
   - `context.filesDir` 内の `model.gguf` と `mmproj.gguf` の両ファイル存在チェック
   - `isModelReady(): Boolean` — 両ファイル存在時に `true`、片方でも欠損で `false`
   - `getModelPath()` / `getMmprojPath()` が `filesDir` 内の絶対パスを返す
