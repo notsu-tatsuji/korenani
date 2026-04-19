@@ -179,7 +179,7 @@ sequenceDiagram
         IR-->>VM: Flow emit
         VM-->>CAM: AppState.InferenceResult（テキスト更新）
     end
-    VM-->>CAM: AppState.ModelReady（ボタン有効化）
+    VM-->>CAM: AppState.InferenceDone（推論完了・結果確定）
 ```
 
 ## Requirements Traceability
@@ -236,6 +236,8 @@ UIコンポーネントはロジックを持たず、`MainViewModel` の `StateF
 **Implementation Notes**
 - `CameraXViewfinder(surfaceRequest)` でCompose nativeプレビュー（camera-compose 1.5）
 - 撮影ボタン: `enabled = appState !is AppState.Inferencing`
+- 推論中（`AppState.Inferencing`）: プレビュー画像をタップすると `onCancelInference()` を呼び出し、途中結果を保持したまま `InferenceDone` へ遷移
+- `AppState.InferenceDone` 時: 「カメラ起動」ボタンを表示し、`onReturnToCamera()` 呼び出しで `ModelReady` に戻る
 - 撮影: `ImageCapture.takePicture → imageProxy.toBitmap() → vm.onCapture(bitmap)` 後に `imageProxy.close()` を必須呼び出し
 - `ProcessCameraProvider` はLifecycleOwnerにバインド（`bindToLifecycle`）
 
@@ -250,6 +252,7 @@ UIコンポーネントはロジックを持たず、`MainViewModel` の `StateF
 - `verticalScroll(rememberScrollState())` でスクロール実現
 - `AppState.Inferencing` 時: `CircularProgressIndicator` を表示
 - `AppState.InferenceResult(text)` 時: テキストを表示（トークンが追加されるたびに更新）
+- `AppState.InferenceDone(text)` 時: 確定した結果テキストを表示（`ResultContent.Success`）
 - `AppState.InferenceError(message)` 時: エラーメッセージを日本語で表示
 
 ---
@@ -276,6 +279,7 @@ sealed class AppState {
     object ModelReady : AppState()
     object Inferencing : AppState()
     data class InferenceResult(val text: String) : AppState()
+    data class InferenceDone(val text: String) : AppState()
     data class InferenceError(val message: String) : AppState()
 }
 
@@ -289,12 +293,16 @@ class MainViewModel(
     fun onStartDownload()               // ダウンロード開始
     fun onRetryDownload()               // 再試行（DownloadFailed状態から）
     fun onCapture(bitmap: Bitmap)       // 撮影完了→推論開始
+    fun onCancelInference()             // 推論中断 → 途中結果を保持して InferenceDone へ遷移
+    fun onReturnToCamera()              // InferenceDone から ModelReady へ戻る
 }
 ```
 
 - `onCapture()` は `viewModelScope.launch(Dispatchers.IO)` で実行
 - トークンストリーミング: `InferenceRepository.infer()` の `Flow<String>` を `collect` し、`appState` を逐次 `InferenceResult(text)` で更新
-- 推論完了後: `appState = ModelReady`（ボタン再有効化）
+- 推論完了後: `appState = InferenceDone(accumulatedText)`（結果確定・静止画保持）
+- `onCancelInference()`: 実行中コルーチンをキャンセルし、蓄積済みテキストで `InferenceDone` に遷移
+- `onReturnToCamera()`: `_capturedBitmap` をクリアして `ModelReady` に遷移
 
 ---
 
@@ -496,9 +504,12 @@ graph LR
     DownloadFailed -->|onRetryDownload| Downloading
     ModelLoading -->|loaded| ModelReady
     ModelReady -->|onCapture| Inferencing
-    Inferencing -->|完了| InferenceResult
+    Inferencing -->|トークン受信| InferenceResult
+    Inferencing -->|全トークン完了| InferenceDone
+    Inferencing -->|onCancelInference| InferenceDone
     Inferencing -->|エラー| InferenceError
-    InferenceResult -->|次の撮影| ModelReady
+    InferenceResult -->|トークン追加| InferenceResult
+    InferenceDone -->|onReturnToCamera| ModelReady
     InferenceError -->|次の撮影| ModelReady
 ```
 
@@ -520,7 +531,7 @@ graph LR
 ### ユニットテスト
 1. `ModelRepository.isModelReady()` — 両ファイル存在/片方欠損/両方欠損の3パターン判定
 2. `ImageUtils.toRgbByteArray()` — 既知のピクセル値を持つBitmapから期待するRGBバイト列への変換精度
-3. `MainViewModel` AppState遷移 — `DownloadRequired → Downloading → ModelReady` および `Inferencing → InferenceResult` の状態機械
+3. `MainViewModel` AppState遷移 — `DownloadRequired → Downloading → ModelReady` および `Inferencing → InferenceResult → InferenceDone`、`onCancelInference()` による `Inferencing → InferenceDone`、`onReturnToCamera()` による `InferenceDone → ModelReady` の状態機械
 
 ### 統合テスト
 1. `ModelRepository.downloadModels()` — MockWebServerを使ったDL完了・進捗・レジューム動作確認
