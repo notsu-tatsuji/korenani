@@ -4,9 +4,42 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val releaseKeystorePath: String? =
+    (findProperty("ANDROID_KEYSTORE_PATH") as String?) ?: System.getenv("ANDROID_KEYSTORE_PATH")
+val releaseKeystorePassword: String? =
+    (findProperty("ANDROID_KEYSTORE_PASSWORD") as String?) ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias: String? =
+    (findProperty("ANDROID_KEY_ALIAS") as String?) ?: System.getenv("ANDROID_KEY_ALIAS")
+val releaseKeyPassword: String? =
+    (findProperty("ANDROID_KEY_PASSWORD") as String?) ?: System.getenv("ANDROID_KEY_PASSWORD")
+
+val isReleaseTaskRequested = gradle.startParameter.taskNames.any {
+    it.contains("Release", ignoreCase = true)
+}
+
 android {
     namespace = "com.example.gemma4viewer"
     compileSdk = 36
+
+    signingConfigs {
+        create("release") {
+            if (
+                !releaseKeystorePath.isNullOrBlank() &&
+                !releaseKeystorePassword.isNullOrBlank() &&
+                !releaseKeyAlias.isNullOrBlank() &&
+                !releaseKeyPassword.isNullOrBlank()
+            ) {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            } else if (isReleaseTaskRequested) {
+                throw GradleException(
+                    "Release署名情報が不足しています。ANDROID_KEYSTORE_PATH / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD を設定してください。"
+                )
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.example.gemma4viewer"
@@ -27,6 +60,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
